@@ -11,7 +11,12 @@ def normalize_distance(df, columns, max_values):
         
     return normalized_df
 
-
+def get_inverse_number(number):
+    if number == 0:
+        return 1
+    else:
+        return 1 / number
+    
 def find_similar_data(df, normalized_df, protein, energy, fat, carbohydrate, max_values, top_n=10):
     # 입력된 값을 정규화
     normalized_protein = protein / max_values['단백질(g)']
@@ -29,7 +34,8 @@ def find_similar_data(df, normalized_df, protein, energy, fat, carbohydrate, max
     similar_indices = normalized_df.nsmallest(top_n, 'distance').index
     similar_data = df.loc[similar_indices].copy()
     similar_data['distance'] = normalized_df.loc[similar_indices, 'distance']
-    
+    similar_data['sim_score'] = similar_data['distance'].apply(get_inverse_number)
+
     return similar_data
 
 def read_data(file_path):
@@ -63,8 +69,8 @@ def make_combined_data():
         print(f"Reading file: {file_name}")
         try:
             df = read_data(file_path)
-            df = df[['식품코드', 'DB군', '상용제품', '식품명', '제조사/유통사', '식품대분류',
-                     '식품상세분류', '1회제공량', '총내용량(g)', '총내용량(mL)', '에너지(㎉)',
+            df = df[['식품코드', 'DB군', '상용제품', '식품명', '식품대분류',
+                     '식품상세분류', '1회제공량', '에너지(㎉)',
                      '단백질(g)', '지방(g)', '탄수화물(g)', '총당류(g)']]
             dataframes.append(df)
         except Exception as e:
@@ -95,7 +101,6 @@ def convert_to_numeric(df, columns):
         df[column] = pd.to_numeric(df[column], errors='coerce')
     return df
 
-
 df = read_combined_data()
 
 columns_to_convert = ['단백질(g)', '에너지(㎉)', '지방(g)', '탄수화물(g)']
@@ -118,13 +123,13 @@ max_values = {
 normalized_df = normalize_distance(df, columns_to_convert, max_values)
 
 # 예시 값 (단백질, 에너지, 지방, 탄수화물)
-protein = 10
-energy = 200
-fat = 5
-carbohydrate = 30
+protein = 13
+energy = 600
+fat = 32
+carbohydrate = 123
 
 # 유사한 데이터 추출
 similar_data = find_similar_data(df, normalized_df, protein, energy, fat, carbohydrate, max_values)
 
 # 결과 출력
-print(similar_data[['식품명', '단백질(g)', '에너지(㎉)', '지방(g)', '탄수화물(g)', 'distance']])
+print(similar_data[['식품명', '단백질(g)', '에너지(㎉)', '지방(g)', '탄수화물(g)', 'sim_score']])
