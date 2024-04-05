@@ -71,8 +71,8 @@ def make_combined_data():
         print(f"Reading file: {file_name}")
         try:
             df = read_data(file_path)
-            df = df[['식품코드', 'DB군', '상용제품', '식품명', '식품대분류',
-                     '식품상세분류', '1회제공량', '에너지(㎉)',
+            df = df[['식품코드', 'DB군', '상용제품', '식품명', '식품대분류', '총 포화 지방산(g)',
+                     '식품상세분류', '1회제공량', '에너지(㎉)', '나트륨(㎎)', '콜레스테롤(㎎)',
                      '단백질(g)', '지방(g)', '탄수화물(g)', '총당류(g)']]
             dataframes.append(df)
         except Exception as e:
@@ -103,6 +103,8 @@ def convert_to_numeric(df, columns):
         df[column] = pd.to_numeric(df[column], errors='coerce')
     return df
 
+# make_combined_data()
+
 df = read_combined_data()
 
 columns_to_convert = ['단백질(g)', '에너지(㎉)', '지방(g)', '탄수화물(g)']
@@ -131,7 +133,21 @@ fat = 32
 carbohydrate = 123
 
 # 유사한 데이터 추출
-similar_data = find_similar_data(df, normalized_df, protein, energy, fat, carbohydrate, max_values)
+similar_data = find_similar_data(df, normalized_df, protein, energy, fat, carbohydrate, max_values, top_n=10)
 
-# 결과 출력
-print(similar_data[['식품명', '단백질(g)', '에너지(㎉)', '지방(g)', '탄수화물(g)', 'sim_score']])
+#나트륨, 콜레스테롤, 포화지방산 데이터 전처리
+similar_data['나트륨(㎎)'] = similar_data['나트륨(㎎)'].replace('-', 0)
+similar_data['콜레스테롤(㎎)'] = similar_data['콜레스테롤(㎎)'].replace('-', 0)
+similar_data['총 포화 지방산(g)'] = similar_data['총 포화 지방산(g)'].replace('-', 0)
+
+similar_data['나트륨(㎎)'] = similar_data['나트륨(㎎)'].str.replace(',', '').astype(float)
+similar_data['콜레스테롤(㎎)'] = similar_data['콜레스테롤(㎎)'].str.replace(',', '').astype(float)
+similar_data['총 포화 지방산(g)'] = similar_data['총 포화 지방산(g)'].str.replace(',', '').astype(float)
+
+#유해성분(나트륨, 콜레스테롤, 포화지방산)이 낮은 순으로 점수 매기기(높을수록 좋음)
+similar_data['nutrient_score'] = similar_data['sim_score'] - similar_data['나트륨(㎎)']/10 - similar_data['콜레스테롤(㎎)']/100 - similar_data['총 포화 지방산(g)']/10
+
+
+# nutrient_score가 높은 순으로 정렬
+similar_data = similar_data.sort_values(by='nutrient_score', ascending=False)
+print(similar_data[['식품명', 'sim_score', 'nutrient_score', '나트륨(㎎)', '콜레스테롤(㎎)', '총 포화 지방산(g)']])
