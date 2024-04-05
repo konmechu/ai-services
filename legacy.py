@@ -144,6 +144,7 @@ def recommend_food():
     def to_float(value):
         return float(value) if value else 0.0
 
+
     # Iterate over each food item to create a DataFrame row
     for food in foods:
         # Extract the name of the food
