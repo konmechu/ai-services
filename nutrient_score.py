@@ -4,6 +4,20 @@ import os
 import chardet
 import pandas as pd
 import numpy as np
+from openai import OpenAI
+
+client = OpenAI(
+    # This is the default and can be omitted
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
+
+def get_embedding(text, model="text-embedding-3-small"):
+    text = text.replace("\n", " ")
+    response = client.embeddings.create(
+        input=[text],
+        model=model
+    )
+    return response.data[0].embedding[0]
 
 def normalize_distance(df, columns, max_values):
     normalized_df = df.copy()
@@ -19,7 +33,7 @@ def get_inverse_number(number):
     else:
         return 1 / number
     
-def find_similar_data(df, normalized_df, protein, energy, fat, carbohydrate, max_values, top_n=10):
+def find_similar_food(df, normalized_df, protein, energy, fat, carbohydrate, max_values, top_n=10):
     # 입력된 값을 정규화
     normalized_protein = protein / max_values['단백질(g)']
     normalized_energy = energy / max_values['에너지(㎉)']
@@ -133,7 +147,7 @@ fat = 32
 carbohydrate = 123
 
 # 유사한 데이터 추출
-similar_data = find_similar_data(df, normalized_df, protein, energy, fat, carbohydrate, max_values, top_n=10)
+similar_data = find_similar_food(df, normalized_df, protein, energy, fat, carbohydrate, max_values, top_n=2)
 
 #나트륨, 콜레스테롤, 포화지방산 데이터 전처리
 similar_data['나트륨(㎎)'] = similar_data['나트륨(㎎)'].replace('-', 0)
@@ -149,5 +163,8 @@ similar_data['nutrient_score'] = similar_data['sim_score'] - similar_data['나�
 
 
 # nutrient_score가 높은 순으로 정렬
-similar_data = similar_data.sort_values(by='nutrient_score', ascending=False)
-print(similar_data[['식품명', 'sim_score', 'nutrient_score', '나트륨(㎎)', '콜레스테롤(㎎)', '총 포화 지방산(g)']])
+similar_foods = similar_data.sort_values(by='nutrient_score', ascending=False)
+similar_foods['food_embedding'] = similar_foods['식품명'].apply(lambda x: get_embedding(x, model='text-embedding-3-large'))
+#print(df['식품명'])
+#print(get_embedding(df['식품명'], model='text-embedding-3-large'))
+print(similar_foods[['식품명', 'food_embedding', 'sim_score', 'nutrient_score', '나트륨(㎎)', '콜레스테롤(㎎)', '총 포화 지방산(g)']])
